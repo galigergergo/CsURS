@@ -1,37 +1,28 @@
 import torch
 import os
 import pandas as pd
-import mlflow
 from typing import Union
 
 
-def read_mlflow_dataset(data_path: str, data_date: str, context: str, resampling: str, targets: str, device: str) -> Union[torch.Tensor, torch.Tensor]:
+def read_dataset(data_path: str, file_name: str, targets: str, device: str) -> Union[torch.Tensor, torch.Tensor]:
     '''
     Reads CSV dataset, logs it to MLflow and returns X and y PyTorch tensors.
-    '''
-    assert context in ['train', 'validate', 'test', 'all']
-    assert resampling in ['-resmpl', '']
-    
-    file_path = os.path.join(data_path, 'data', 'OSM_road_network', data_date, f'BP_safety-network_{data_date}_NN{resampling}_{context}.csv')
+    '''    
+    file_path = os.path.join(data_path, file_name)
     df = pd.read_csv(file_path)
-    # Move accident number columns to the right side of the dataframe 
-    df = df[list(df.columns[~df.columns.str.contains(pat = 'acc_no_')]) + list(df.columns[df.columns.str.contains(pat = 'acc_no_')])]
-    non_accident_dim = len(list(df.columns[~df.columns.str.contains(pat = 'acc_no_')]))
     
-    dataset = mlflow.data.from_pandas(pd.DataFrame(df), source=file_path, name=f'BP_safety-network_{data_date}_NN{resampling}_{context}', targets=targets)
-    mlflow.log_input(dataset, context=context)
+    # Move accident number columns to the right side of the dataframe 
+    df = df[list(df.columns[~df.columns.str.contains(pat='rs_crashes_')]) + list(df.columns[df.columns.str.contains(pat='rs_crashes_')])]
+    non_accident_dim = len(list(df.columns[~df.columns.str.contains(pat='rs_crashes_')]))
 
     return torch.tensor(df.drop(targets, axis=1).values, device=device).float(), torch.tensor(df[[targets]].values, device=device).float(), non_accident_dim
 
 
-def read_mlflow_dataset_config(data_path: str, data_date: str) -> pd.DataFrame:
+def read_dataset_config(data_path: str, file_name: str) -> pd.DataFrame:
     '''
     Reads CSV dataset config as pandas DataFrame.
     '''    
-    file_path = os.path.join(data_path, 'data', 'OSM_road_network', data_date, f'BP_safety-network_{data_date}_config.csv')
+    file_path = os.path.join(data_path, file_name)
     df = pd.read_csv(file_path)
-    
-    dataset = mlflow.data.from_pandas(pd.DataFrame(df), source=file_path, name=f'BP_safety-network_{data_date}_config')
-    mlflow.log_input(dataset, context='config')
 
     return df
